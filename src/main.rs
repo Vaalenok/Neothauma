@@ -1,5 +1,6 @@
 mod primitives;
 mod tests;
+mod utils;
 
 use winit::{
     application::ApplicationHandler,
