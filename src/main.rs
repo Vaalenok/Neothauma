@@ -1,3 +1,6 @@
+mod primitives;
+mod tests;
+
 use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
@@ -124,7 +127,7 @@ impl<'a> ApplicationHandler for App<'a> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let attrs = Window::default_attributes()
             .with_resizable(false)
-            .with_title("Thaumiel")
+            .with_title("Neothauma")
             .with_inner_size(winit::dpi::LogicalSize::new(1280.0, 720.0)); // Атрибуты основного окна
 
         let window = Box::new(event_loop.create_window(attrs).unwrap()); // Создание основного окна
