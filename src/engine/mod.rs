@@ -1,2 +1,2 @@
-pub mod primitives;
-pub mod view;
+pub mod renderer;
+pub(crate) mod objects;

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     // Примитивы
-    use crate::engine::primitives::*;
+    use crate::engine::objects::primitives::*;
 
     #[test]
     fn test_point_add_vector() {
@@ -111,5 +111,14 @@ mod tests {
         v.scale((2.0, 0.5, -1.0));
         let expected = Vec3::new(2.0, 1.0, -3.0);
         assert_eq!(v, expected);
+    }
+    
+    // Формы
+    use crate::engine::objects::shapes::*;
+    #[test]
+    fn test_line() {
+        let a = Point::new(1.0, 2.0, 3.0);
+        let b = Point::new(2.0, 3.0, 4.0);
+        let l = Line::new(a, b, 5);
     }
 }

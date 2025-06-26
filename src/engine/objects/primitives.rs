@@ -2,6 +2,11 @@ use crate::utils;
 
 const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
 
+// Трейт отрисовки 
+pub trait Drawable {
+    fn draw(&self, encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView);
+}
+
 // Основа примитива
 pub trait Primitive {
     fn add_vector(&mut self, vector: &Vec3);
@@ -47,7 +52,7 @@ impl Point {
     pub fn new(x: f32, y: f32, z: f32) -> Self {
         Self { x, y, z }
     }
-    
+
     pub fn add_point(&mut self, point: &Point) {
         self.x += point.x;
         self.y += point.y;
@@ -62,6 +67,12 @@ impl Point {
 
     pub fn to_vec3(&self) -> Vec3 {
         Vec3 { x: self.x, y: self.y, z: self.z }
+    }
+}
+
+impl Drawable for Point {
+    fn draw(&self, encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView) {
+        // TODO
     }
 }
 
@@ -103,7 +114,7 @@ impl Vec3 {
     pub fn new(x: f32, y: f32, z: f32) -> Self {
         Self { x, y, z }
     }
-    
+
     pub fn to_point(&self) -> Point {
         Point { x: self.x, y: self.y, z: self.z }
     }
@@ -142,5 +153,11 @@ impl Vec3 {
         self.x *= factor.0;
         self.y *= factor.1;
         self.z *= factor.2;
+    }
+}
+
+impl Drawable for Vec3 {
+    fn draw(&self, encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView) {
+        // TODO
     }
 }
