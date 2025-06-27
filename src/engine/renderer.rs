@@ -1,5 +1,5 @@
 use winit::window::Window;
-use crate::engine::objects::primitives::*;
+use crate::engine::primitives::*;
 use crate::engine::scene::*;
 
 // Камера
@@ -50,11 +50,11 @@ pub struct Renderer<'a> {
     pub scene: Scene,
     camera: Camera,
     surface: wgpu::Surface<'a>,
-    device: wgpu::Device,
+    pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
-    render_pipeline: wgpu::RenderPipeline
+    pub render_pipeline: wgpu::RenderPipeline
 }
 
 impl<'a> Renderer<'a> {

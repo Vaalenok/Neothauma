@@ -4,18 +4,21 @@ use winit::{
     event_loop::{ActiveEventLoop},
     window::{Window, WindowId},
 };
+use crate::engine::ecs::ECS;
 use crate::engine::renderer::Renderer;
+use crate::engine::core::*;
+use crate::game;
 
 pub struct App<'a> {
     window: Option<Window>,
-    renderer: Option<Renderer<'a>>
+    engine: Option<Engine<'a>>
 }
 
 impl Default for App<'_> {
     fn default() -> Self {
         Self {
             window: None,
-            renderer: None
+            engine: None
         }
     }
 }
@@ -32,12 +35,19 @@ impl ApplicationHandler for App<'_> {
         let window_ref: &'static Window = Box::leak(Box::new(window));
         self.window = Some(unsafe { std::ptr::read(window_ref) });
 
-        self.renderer = Some(pollster::block_on(Renderer::new(window_ref)));
+        let renderer = pollster::block_on(Renderer::new(window_ref));
+        let ecs = ECS::new();
+
+        self.engine = Some(Engine { renderer, ecs });
+
+        if let Some(engine) = self.engine.as_mut() {
+            load(engine);
+        }
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
         let window = self.window.as_ref().unwrap();
-        let renderer = self.renderer.as_mut().unwrap();
+        let engine = self.engine.as_mut().unwrap();
 
         if id != window.id() {
             return;
@@ -46,14 +56,14 @@ impl ApplicationHandler for App<'_> {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => {
-                renderer.resize(size);
+                engine.renderer.resize(size);
                 window.request_redraw();
             }
             WindowEvent::ScaleFactorChanged { .. } => {
                 window.request_redraw();
             }
             WindowEvent::RedrawRequested => {
-                if let Err(e) = renderer.render() {
+                if let Err(e) = engine.renderer.render() {
                     eprintln!("Ошибка отрисовки: {e:?}");
                 }
 
@@ -64,6 +74,10 @@ impl ApplicationHandler for App<'_> {
     }
 
     fn suspended(&mut self, _event_loop: &ActiveEventLoop) {
-        self.renderer = None;
+        self.engine = None;
     }
+}
+
+fn load(engine: &mut Engine) {
+    game::load::load(engine);
 }

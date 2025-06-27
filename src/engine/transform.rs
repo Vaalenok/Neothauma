@@ -1,5 +1,6 @@
-use crate::engine::objects::primitives::*;
+use crate::engine::primitives::*;
 
+#[derive(Clone)]
 pub struct Transform {
     pub position: Vec3,
     pub rotation: Quat,

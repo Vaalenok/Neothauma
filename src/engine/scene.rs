@@ -1,10 +1,10 @@
-use std::sync::Arc;
-use crate::engine::objects::primitives::*;
-use crate::engine::objects::shapes::*;
+use crate::engine::ecs::Id;
+use crate::engine::primitives::*;
 use crate::engine::transform::*;
 
 pub struct RenderableMesh {
-    pub meshes: Arc<Mesh>,
+    pub id: Id,
+    pub mesh: Mesh,
     pub transform: Transform,
     pub vertex_buffer: wgpu::Buffer,
     pub index_buffer: Option<wgpu::Buffer>,

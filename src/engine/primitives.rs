@@ -633,3 +633,25 @@ impl Mul for Mat4 {
         self.mul_mat4(&rhs)
     }
 }
+
+// Полигональная сетка
+#[derive(Clone)]
+pub struct Mesh {
+    pub vertices: Vec<Vec3>,
+    pub indices: Vec<u32>
+}
+
+impl Default for Mesh {
+    fn default() -> Self {
+        Self {
+            vertices: Vec::new(),
+            indices: Vec::new()
+        }   
+    }
+}
+
+impl Mesh {
+    pub fn new(vertices: Vec<Vec3>, indices: Vec<u32>) -> Self {
+        Self { vertices, indices }
+    }
+}

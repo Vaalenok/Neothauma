@@ -1,81 +1,72 @@
-use std::sync::Arc;
 use wgpu::util::DeviceExt;
+use crate::engine::ecs::{Entity, Id};
 use crate::engine::scene::*;
 use crate::engine::transform::*;
-use crate::engine::objects::primitives::*;
-use crate::engine::objects::shapes::*;
+use crate::engine::primitives::*;
 
 pub fn create_renderable_mesh(
     device: &wgpu::Device,
     bind_layout: &wgpu::BindGroupLayout,
-    vertices: &[Vec3],
-    indices: Option<&[u16]>
+    id: Id,
+    entity: &Entity
 ) -> RenderableMesh {
-    let triangles = if let Some(indices) = indices {
-        indices.chunks(3)
-            .map(|chunk| Triangle {
-                v0: Vec3::new(
-                    vertices[chunk[0] as usize].x,
-                    vertices[chunk[0] as usize].y,
-                    vertices[chunk[0] as usize].z
-                ),
-                v1: Vec3::new(
-                    vertices[chunk[1] as usize].x,
-                    vertices[chunk[1] as usize].y,
-                    vertices[chunk[1] as usize].z
-                ),
-                v2: Vec3::new(
-                    vertices[chunk[2] as usize].x,
-                    vertices[chunk[2] as usize].y,
-                    vertices[chunk[2] as usize].z
-                )
-            })
-            .collect()
-    } else {
-        vec![]
+    let mesh = Mesh {
+        vertices: entity.mesh.vertices.clone(),
+        indices: entity.mesh.indices.iter().map(|&idx| idx.to_be()).collect(),
     };
 
-    let mesh = Arc::new(Mesh { triangles });
+    let vertex_data: Vec<Vec3> = entity.mesh.vertices
+        .iter()
+        .map(|v| Vec3::new(v.x, v.y, v.z))
+        .collect();
 
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Vertex Buffer"),
-        contents: bytemuck::cast_slice(vertices),
-        usage: wgpu::BufferUsages::VERTEX
+        contents: bytemuck::cast_slice(&vertex_data),
+        usage: wgpu::BufferUsages::VERTEX,
     });
 
-    let (index_buffer, index_count) = if let Some(indices) = indices {
-        let ib = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+    let indices = &entity.mesh.indices;
+
+    let (index_buffer, index_count) = if !indices.is_empty() {
+        let indices_u16: Vec<u16> = indices.iter().map(|&i| i as u16).collect();
+
+        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(indices),
-            usage: wgpu::BufferUsages::INDEX
+            contents: bytemuck::cast_slice(&indices_u16),
+            usage: wgpu::BufferUsages::INDEX,
         });
-        (Some(ib), indices.len() as u32)
+
+        (Some(buffer), indices_u16.len() as u32)
     } else {
-        (None, vertices.len() as u32)
+        (None, entity.mesh.vertices.len() as u32)
     };
+
+    let uniform = Mat4::IDENTITY;
 
     let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Uniform Buffer"),
-        contents: bytemuck::bytes_of(&Mat4::IDENTITY),
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST
+        contents: bytemuck::bytes_of(&uniform),
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
     });
 
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         layout: bind_layout,
         entries: &[wgpu::BindGroupEntry {
             binding: 0,
-            resource: uniform_buffer.as_entire_binding()
+            resource: uniform_buffer.as_entire_binding(),
         }],
-        label: Some("Bind Group")
+        label: Some("Bind Group"),
     });
 
     RenderableMesh {
-        meshes: mesh,
+        id,
+        mesh,
         transform: Transform::default(),
         vertex_buffer,
         index_buffer,
         index_count,
         uniform_buffer,
-        bind_group
+        bind_group,
     }
 }
