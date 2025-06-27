@@ -1,2 +1,5 @@
 pub mod renderer;
-pub(crate) mod objects;
+pub mod objects;
+pub mod transform;
+pub mod scene;
+pub mod factory;

@@ -1,29 +1,13 @@
-use crate::engine::objects::primitives::{Drawable, Point};
+use crate::engine::objects::primitives::*;
 
-pub struct Line {
-    pub start: Point,
-    pub end: Point,
-    pub thickness: u16
+// Полигон
+pub struct Triangle {
+    pub v0: Vec3,
+    pub v1: Vec3,
+    pub v2: Vec3
 }
 
-impl Default for Line {
-    fn default() -> Self {
-        Self {
-            start: Point::default(),
-            end: Point::default(),
-            thickness: u16::default()
-        }
-    }
-}
-
-impl Line {
-    pub fn new(start: Point, end: Point, thickness: u16) -> Self {
-        Self { start, end, thickness }
-    }
-}
-
-impl Drawable for Line {
-    fn draw(&self, encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView) {
-        // TODO
-    }
+// Полигональная сетка
+pub struct Mesh {
+    pub triangles: Vec<Triangle>
 }

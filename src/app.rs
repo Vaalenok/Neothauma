@@ -8,14 +8,14 @@ use crate::engine::renderer::Renderer;
 
 pub struct App<'a> {
     window: Option<Window>,
-    renderer: Option<Renderer<'a>>,
+    renderer: Option<Renderer<'a>>
 }
 
 impl Default for App<'_> {
     fn default() -> Self {
         Self {
             window: None,
-            renderer: None,
+            renderer: None
         }
     }
 }
@@ -56,6 +56,8 @@ impl ApplicationHandler for App<'_> {
                 if let Err(e) = renderer.render() {
                     eprintln!("Ошибка отрисовки: {e:?}");
                 }
+
+                window.request_redraw();
             }
             _ => {}
         }
