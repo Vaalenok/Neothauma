@@ -6,3 +6,4 @@ pub mod core;
 pub mod ecs;
 pub mod primitives;
 pub mod objects;
+pub mod uniforms;

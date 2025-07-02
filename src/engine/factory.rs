@@ -12,7 +12,7 @@ pub fn create_renderable_mesh(
 ) -> RenderableMesh {
     let mesh = Mesh {
         vertices: entity.mesh.vertices.clone(),
-        indices: entity.mesh.indices.iter().map(|&idx| idx.to_be()).collect(),
+        indices: entity.mesh.indices.iter().map(|&idx| idx.to_be()).collect()
     };
 
     let vertex_data: Vec<Vec3> = entity.mesh.vertices
@@ -23,7 +23,7 @@ pub fn create_renderable_mesh(
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Vertex Buffer"),
         contents: bytemuck::cast_slice(&vertex_data),
-        usage: wgpu::BufferUsages::VERTEX,
+        usage: wgpu::BufferUsages::VERTEX
     });
 
     let indices = &entity.mesh.indices;
@@ -34,7 +34,7 @@ pub fn create_renderable_mesh(
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Index Buffer"),
             contents: bytemuck::cast_slice(&indices_u16),
-            usage: wgpu::BufferUsages::INDEX,
+            usage: wgpu::BufferUsages::INDEX
         });
 
         (Some(buffer), indices_u16.len() as u32)
@@ -47,7 +47,7 @@ pub fn create_renderable_mesh(
     let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Uniform Buffer"),
         contents: bytemuck::bytes_of(&uniform),
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST
     });
 
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -56,7 +56,7 @@ pub fn create_renderable_mesh(
             binding: 0,
             resource: uniform_buffer.as_entire_binding(),
         }],
-        label: Some("Bind Group"),
+        label: Some("Bind Group")
     });
 
     RenderableMesh {
@@ -67,6 +67,6 @@ pub fn create_renderable_mesh(
         index_buffer,
         index_count,
         uniform_buffer,
-        bind_group,
+        bind_group
     }
 }

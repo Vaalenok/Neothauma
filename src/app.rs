@@ -1,83 +1,63 @@
+use std::sync::Arc;
 use winit::{
     application::ApplicationHandler,
-    event::WindowEvent,
-    event_loop::{ActiveEventLoop},
+    dpi::LogicalSize,
+    event::{WindowEvent},
+    event_loop::ActiveEventLoop,
     window::{Window, WindowId},
 };
-use crate::engine::ecs::ECS;
-use crate::engine::renderer::Renderer;
-use crate::engine::core::*;
-use crate::game;
+use crate::engine::core::Engine;
 
 pub struct App<'a> {
-    window: Option<Window>,
     engine: Option<Engine<'a>>
 }
 
-impl Default for App<'_> {
+impl<'a> Default for App<'a> {
     fn default() -> Self {
-        Self {
-            window: None,
-            engine: None
-        }
+        Self { engine: None }
     }
 }
 
-impl ApplicationHandler for App<'_> {
+impl<'a> ApplicationHandler for App<'a> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window = event_loop.create_window(
             Window::default_attributes()
                 .with_resizable(false)
                 .with_title("Neothauma")
-                .with_inner_size(winit::dpi::LogicalSize::new(1280.0, 720.0)),
+                .with_inner_size(LogicalSize::new(1280, 720))
         ).unwrap();
 
-        let window_ref: &'static Window = Box::leak(Box::new(window));
-        self.window = Some(unsafe { std::ptr::read(window_ref) });
+        let window = Arc::new(window);
+        let engine = Engine::new(window.clone());
 
-        let renderer = pollster::block_on(Renderer::new(window_ref));
-        let ecs = ECS::new();
-
-        self.engine = Some(Engine { renderer, ecs });
-
-        if let Some(engine) = self.engine.as_mut() {
-            load(engine);
-        }
+        self.engine = Some(engine);
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
-        let window = self.window.as_ref().unwrap();
-        let engine = self.engine.as_mut().unwrap();
-
-        if id != window.id() {
-            return;
-        }
-
-        match event {
-            WindowEvent::CloseRequested => event_loop.exit(),
-            WindowEvent::Resized(size) => {
-                engine.renderer.resize(size);
-                window.request_redraw();
-            }
-            WindowEvent::ScaleFactorChanged { .. } => {
-                window.request_redraw();
-            }
-            WindowEvent::RedrawRequested => {
-                if let Err(e) = engine.renderer.render() {
-                    eprintln!("Ошибка отрисовки: {e:?}");
+        if let Some(engine) = &mut self.engine {
+            if Arc::ptr_eq(&engine.window, &engine.window) && engine.window.id() == id {
+                match event {
+                    WindowEvent::CloseRequested => event_loop.exit(),
+                    WindowEvent::Resized(size) => {
+                        engine.renderer.resize(size);
+                        engine.window.request_redraw();
+                    }
+                    WindowEvent::ScaleFactorChanged { .. } => {
+                        engine.window.request_redraw();
+                    }
+                    WindowEvent::RedrawRequested => {
+                        if let Err(e) = engine.renderer.render() {
+                            eprintln!("Ошибка отрисовки: {:?}", e);
+                        }
+                        engine.window.request_redraw();
+                    }
+                    _ => {}
                 }
-
-                window.request_redraw();
             }
-            _ => {}
         }
     }
 
     fn suspended(&mut self, _event_loop: &ActiveEventLoop) {
         self.engine = None;
     }
-}
-
-fn load(engine: &mut Engine) {
-    game::load::load(engine);
 }

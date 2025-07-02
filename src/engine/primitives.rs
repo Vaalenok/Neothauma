@@ -1,10 +1,5 @@
 use std::ops::{Add, Sub, Mul, Div, Neg};
 
-// Трейт отрисовки
-pub trait Drawable {
-    fn draw(&self, encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView);
-}
-
 // Двухмерный вектор
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Vec2 {
@@ -498,6 +493,20 @@ impl Neg for Quat {
     }
 }
 
+impl Mul<Vec3> for Quat {
+    type Output = Vec3;
+
+    fn mul(self, v: Vec3) -> Vec3 {
+        let u = Vec3::new(self.x, self.y, self.z);
+        let s = self.w;
+
+        let cross1 = u.cross(v);
+        let cross2 = u.cross(cross1);
+
+        v + cross1 * (2.0 * s) + cross2 * 2.0
+    }
+}
+
 // Трёхмерная матрица
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Mat3 {
@@ -618,6 +627,26 @@ impl Mat4 {
 
         result
     }
+
+    pub fn to_cols_array_2d(&self) -> [[f32; 4]; 4] {
+        let mut result = [[0.0; 4]; 4];
+        for i in 0..4 {
+            for j in 0..4 {
+                result[j][i] = self.data[i][j];
+            }
+        }
+        result
+    }
+
+    pub fn to_cols_array(&self) -> [f32; 16] {
+        let mut result = [0.0; 16];
+        for i in 0..4 {
+            for j in 0..4 {
+                result[j * 4 + i] = self.data[i][j];
+            }
+        }
+        result
+    }
 }
 
 impl Default for Mat4 {
@@ -653,5 +682,9 @@ impl Default for Mesh {
 impl Mesh {
     pub fn new(vertices: Vec<Vec3>, indices: Vec<u32>) -> Self {
         Self { vertices, indices }
+    }
+
+    pub fn index_count(&self) -> u32 {
+        self.indices.len() as u32
     }
 }

@@ -32,16 +32,6 @@ impl ECS {
         }
     }
     
-    pub fn update_entity(&mut self, entity: Entity, renderer: &mut Renderer) {
-        if let Some(pos) = self.entities.iter().position(|e| e.id == entity.id) {
-            self.entities[pos] = entity.clone();
-        }
-
-        if let Some(obj) = renderer.scene.objects.iter_mut().find(|o| o.id == entity.id) {
-            obj.update_uniforms(&renderer.queue);
-        }
-    }
-    
     pub fn create_entity(
         &mut self,
         name: String,

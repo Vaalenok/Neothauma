@@ -1,6 +1,5 @@
 mod engine;
 mod app;
-mod game;
 
 use winit::event_loop::{ControlFlow, EventLoop};
 use app::App;

@@ -1,6 +1,7 @@
+use std::sync::Arc;
+use wgpu::{RenderPassDescriptor, Surface, SurfaceConfiguration};
 use winit::window::Window;
-use crate::engine::primitives::*;
-use crate::engine::scene::*;
+use crate::engine::{primitives::*, scene::*};
 
 // Камера
 pub struct Camera {
@@ -43,26 +44,102 @@ impl Camera {
             far
         }
     }
+
+    pub fn get_view_matrix(&self) -> Mat4 {
+        let f = self.direction.normalize();
+        let s = f.cross(self.up).normalize();
+        let u = s.cross(f);
+
+        let mut result = Mat4::default();
+
+        result.data[0][0] = s.x;
+        result.data[1][0] = s.y;
+        result.data[2][0] = s.z;
+        result.data[3][0] = -s.dot(self.position);
+
+        result.data[0][1] = u.x;
+        result.data[1][1] = u.y;
+        result.data[2][1] = u.z;
+        result.data[3][1] = -u.dot(self.position);
+
+        result.data[0][2] = -f.x;
+        result.data[1][2] = -f.y;
+        result.data[2][2] = -f.z;
+        result.data[3][2] = f.dot(self.position);
+
+        result.data[0][3] = 0.0;
+        result.data[1][3] = 0.0;
+        result.data[2][3] = 0.0;
+        result.data[3][3] = 1.0;
+
+        result
+    }
+
+    pub fn get_projection_matrix(&self, aspect_ratio: f32) -> Mat4 {
+        let fov_rad = self.fov.to_radians();
+        let f = 1.0 / (fov_rad / 2.0).tan();
+
+        let mut result = Mat4::default();
+        result.data[0][0] = f / aspect_ratio;
+        result.data[1][1] = f;
+        result.data[2][2] = self.far / (self.near - self.far);
+        result.data[3][2] = (self.near * self.far) / (self.near - self.far);
+        result.data[2][3] = -1.0;
+        result.data[3][3] = 0.0;
+
+        result
+    }
+
+    pub fn move_forward(&mut self, dist: f32) {
+        self.position = self.position + self.direction * dist;
+    }
+
+    pub fn move_backward(&mut self, dist: f32) {
+        self.position = self.position - self.direction * dist;
+    }
+
+    pub fn move_right(&mut self, dist: f32) {
+        let right = self.direction.cross(self.up).normalize();
+        self.position = self.position + right * dist;
+    }
+
+    pub fn move_left(&mut self, dist: f32) {
+        let right = self.direction.cross(self.up).normalize();
+        self.position = self.position - right * dist;
+    }
+
+    pub fn rotate_yaw(&mut self, angle_rad: f32) {
+        let rotation = Quat::from_axis_angle(self.up, angle_rad);
+        self.direction = rotation * self.direction;
+    }
+
+    pub fn rotate_pitch(&mut self, angle_rad: f32) {
+        let right = self.direction.cross(self.up).normalize();
+        let rotation = Quat::from_axis_angle(right, angle_rad);
+        self.direction = rotation * self.direction;
+        self.direction = self.direction.normalize();
+    }
 }
 
 // Рендерер
 pub struct Renderer<'a> {
+    window: Arc<Window>,
+    surface: Surface<'a>,
     pub scene: Scene,
     camera: Camera,
-    surface: wgpu::Surface<'a>,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
-    config: wgpu::SurfaceConfiguration,
+    config: SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
     pub render_pipeline: wgpu::RenderPipeline
 }
 
 impl<'a> Renderer<'a> {
-    pub async fn new(window: &'a Window) -> Self {
+    pub async fn new(window: Arc<Window>) -> Self {
         let size = window.inner_size();
         let instance = wgpu::Instance::default();
         let surface = instance
-            .create_surface(window)
+            .create_surface(window.clone())
             .expect("Не удалось создать поверхность");
 
         let adapter = instance
@@ -71,25 +148,25 @@ impl<'a> Renderer<'a> {
                 ..Default::default()
             })
             .await
-            .expect("Нет подходящего адаптера");
+            .expect("Нет подходящего графического адаптера");
 
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor::default())
             .await
-            .expect("Не удалось создать устройство");
+            .expect("Не удалось создать логическое устройство");
 
         let surface_caps = surface.get_capabilities(&adapter);
         let surface_format = surface_caps.formats[0];
 
-        let config = wgpu::SurfaceConfiguration {
+        let config = SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
             width: size.width,
             height: size.height,
             present_mode: surface_caps.present_modes[0],
+            desired_maximum_frame_latency: 0,
             alpha_mode: surface_caps.alpha_modes[0],
-            view_formats: vec![],
-            desired_maximum_frame_latency: 2,
+            view_formats: vec![]
         };
 
         surface.configure(&device, &config);
@@ -161,9 +238,10 @@ impl<'a> Renderer<'a> {
         });
 
         Self {
+            window,
+            surface,
             scene: Scene::new(),
             camera: Camera::default(),
-            surface,
             device,
             queue,
             config,
@@ -185,23 +263,29 @@ impl<'a> Renderer<'a> {
         let frame = self.surface.get_current_texture()?;
         let view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Render Encoder"),
+            label: Some("Render Encoder")
         });
 
+        let aspect_ratio = self.size.width as f32 / self.size.height as f32;
+
+        for obj in &self.scene.objects {
+            obj.update_uniforms(&self.queue, &self.camera, aspect_ratio);
+        }
+
         {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                        store: wgpu::StoreOp::Store,
+                        store: wgpu::StoreOp::Store
                     },
                 })],
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
-                occlusion_query_set: None,
+                occlusion_query_set: None
             });
 
             self.scene.draw(&mut render_pass, &self.render_pipeline);
