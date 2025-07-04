@@ -1,65 +1,72 @@
-use crate::engine::factory::create_renderable_mesh;
-use crate::engine::transform::*;
-use crate::engine::primitives::*;
-use crate::engine::renderer::Renderer;
+use std::collections::HashMap;
+use crate::engine::renderer::mesh::*;
+use crate::engine::renderer::transform::*;
+use crate::engine::renderer::renderer::*;
+use crate::engine::renderer::renderable::*;
 
-pub type Id = usize;
-
-#[derive(Clone)]
-pub struct Entity {
-    pub id: Id,
-    pub name: String,
-    pub transform: Transform,
-    pub mesh: Mesh
+pub trait Updatable {
+    fn update(&mut self, dt: f32, transform: &mut Transform);
 }
 
-impl Entity {
-    pub fn new(id: Id, name: String) -> Self {
-        Self { id, name, transform: Transform::default(), mesh: Mesh::default() }
-    }
-}
+pub type Entity = usize;
 
 pub struct ECS {
-    next_id: Id,
-    entities: Vec<Entity>
+    next_entity: Entity,
+    pub transforms: HashMap<Entity, Transform>,
+    pub meshes: HashMap<Entity, Mesh>,
+    pub scripts: HashMap<Entity, Box<dyn Updatable>>,
+    pub renderables: HashMap<Entity, RenderableMesh>
 }
 
 impl ECS {
     pub fn new() -> Self {
         Self {
-            next_id: 0,
-            entities: Vec::new()
+            next_entity: 0,
+            transforms: HashMap::new(),
+            meshes: HashMap::new(),
+            scripts: HashMap::new(),
+            renderables: HashMap::new()
         }
     }
-    
-    pub fn create_entity(
-        &mut self,
-        name: String,
-        mesh: Mesh,
-        transform: Transform,
-        renderer: &mut Renderer
-    ) -> Entity {
-        let id = self.next_id;
-        self.next_id += 1;
 
-        let entity = Entity {
-            id,
-            name,
-            transform,
-            mesh: mesh.clone()
-        };
+    pub fn create_entity(&mut self) -> Entity {
+        let id = self.next_entity;
+        self.next_entity += 1;
+        id
+    }
 
-        self.entities.push(entity.clone());
+    pub fn delete_entity(&mut self, entity: Entity) {
+        self.transforms.remove(&entity);
+        self.meshes.remove(&entity);
+        self.scripts.remove(&entity);
+        self.renderables.remove(&entity);
+    }
 
-        let entity_ref = self.entities.last().unwrap();
-        let renderable = create_renderable_mesh(
+    pub fn add_transform(&mut self, entity: Entity, transform: Transform) {
+        self.transforms.insert(entity, transform);
+    }
+
+    pub fn add_mesh(&mut self, entity: Entity, mesh: Mesh, renderer: &Renderer) {
+        self.meshes.insert(entity, mesh.clone());
+
+        let renderable = RenderableMesh::new(
             &renderer.device,
             &renderer.render_pipeline.get_bind_group_layout(0),
-            entity.id,
-            entity_ref
+            &mesh
         );
-        renderer.scene.objects.push(renderable);
+        
+        self.renderables.insert(entity, renderable);
+    }
 
-        entity
+    pub fn add_script(&mut self, entity: Entity, script: Box<dyn Updatable>) {
+        self.scripts.insert(entity, script);
+    }
+
+    pub fn update(&mut self, dt: f32) {
+        for (entity, script) in &mut self.scripts {
+            if let Some(transform) = self.transforms.get_mut(entity) {
+                script.update(dt, transform);
+            }
+        }
     }
 }
