@@ -3,10 +3,11 @@ use std::sync::*;
 use winit::keyboard::PhysicalKey;
 use winit::window::*;
 use crate::engine::ecs::*;
-use crate::engine::renderer::camera::Camera;
-use crate::engine::renderer::mesh::*;
-use crate::engine::renderer::renderer::*;
-use crate::engine::renderer::transform::*;
+use crate::engine::render::camera::Camera;
+use crate::engine::render::mesh::*;
+use crate::engine::render::renderable::Light;
+use crate::engine::render::renderer::*;
+use crate::engine::render::transform::*;
 
 pub struct Engine<'a> {
     pub window: Arc<Window>,
@@ -48,6 +49,10 @@ impl<'a> Engine<'a> {
 
     pub fn add_mesh(&mut self, entity: Entity, mesh: Mesh) {
         self.ecs.add_mesh(entity, mesh, &self.renderer);
+    }
+    
+    pub fn add_light(&mut self, entity: Entity, light: Light) {
+        self.ecs.add_light(entity, light);
     }
     
     // Renderer

@@ -1,10 +1,13 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 use wgpu::*;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use winit::window::Window;
 use crate::engine::ecs::*;
-use crate::engine::renderer::renderable::*;
+use crate::engine::render::renderable::*;
+use std::mem::size_of;
+
+/// Максимальное число источников света. Обновлять вместе с шейдером
+const MAX_LIGHTS: usize = 100;
 
 pub struct Renderer<'a> {
     surface: Surface<'a>,
@@ -14,7 +17,8 @@ pub struct Renderer<'a> {
     size: winit::dpi::PhysicalSize<u32>,
     pub render_pipeline: RenderPipeline,
     depth_view: TextureView,
-    pub light_buffer: Buffer
+    pub light_buffer: Buffer,
+    pub light_count_buffer: Buffer
 }
 
 impl<'a> Renderer<'a> {
@@ -71,7 +75,6 @@ impl<'a> Renderer<'a> {
         });
 
         let depth_view = depth_texture.create_view(&TextureViewDescriptor::default());
-        
         let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("Shader"),
             source: ShaderSource::Wgsl(include_str!("../shaders/default.wgsl").into())
@@ -111,6 +114,16 @@ impl<'a> Renderer<'a> {
                     binding: 1,
                     visibility: ShaderStages::FRAGMENT,
                     ty: BindingType::Buffer {
+                        ty: BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None
+                    },
+                    count: None
+                },
+                BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Buffer {
                         ty: BufferBindingType::Uniform,
                         has_dynamic_offset: false,
                         min_binding_size: None
@@ -120,11 +133,16 @@ impl<'a> Renderer<'a> {
             ]
         });
 
-        let light_data = Light::default();
-
-        let light_buffer = device.create_buffer_init(&BufferInitDescriptor {
+        let light_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Light Buffer"),
-            contents: bytemuck::bytes_of(&light_data),
+            size: (size_of::<Light>() * MAX_LIGHTS) as u64,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+            mapped_at_creation: false
+        });
+
+        let light_count_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Light Count Buffer"),
+            contents: bytemuck::bytes_of(&LightCount { count: 0 }),
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST
         });
 
@@ -177,7 +195,8 @@ impl<'a> Renderer<'a> {
             size,
             render_pipeline,
             depth_view,
-            light_buffer
+            light_buffer,
+            light_count_buffer
         }
     }
 
@@ -198,6 +217,12 @@ impl<'a> Renderer<'a> {
         });
 
         let aspect_ratio = self.size.width as f32 / self.size.height as f32;
+
+        let lights = ecs.collect_lights();
+        let light_count = LightCount { count: lights.len() as u32 };
+        
+        self.queue.write_buffer(&self.light_buffer, 0, bytemuck::cast_slice(&lights));
+        self.queue.write_buffer(&self.light_count_buffer, 0, bytemuck::bytes_of(&light_count));
 
         {
             let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
@@ -227,10 +252,10 @@ impl<'a> Renderer<'a> {
             for (entity, renderable) in &ecs.renderables {
                 if let Some(transform) = ecs.transforms.get(entity) {
                     renderable.update_uniforms(&self.queue, transform, &ecs.camera, aspect_ratio);
-
+                    
                     render_pass.set_bind_group(0, &renderable.bind_group, &[]);
                     render_pass.set_vertex_buffer(0, renderable.vertex_buffer.slice(..));
-
+                    
                     if let Some(index_buffer) = &renderable.index_buffer {
                         render_pass.set_index_buffer(index_buffer.slice(..), IndexFormat::Uint16);
                         render_pass.draw_indexed(0..renderable.index_count, 0, 0..1);
@@ -243,7 +268,8 @@ impl<'a> Renderer<'a> {
 
         self.queue.submit(Some(encoder.finish()));
         frame.present();
-
+        
+        // TODO: Убрать
         if let Some(camera) = &ecs.camera {
             println!("Pos: {:?} | Rot: {:?} | FOV: {}", camera.position, camera.rotation, camera.fov);
         }

@@ -1,9 +1,9 @@
 use std::collections::HashMap;
-use crate::engine::renderer::camera::*;
-use crate::engine::renderer::mesh::*;
-use crate::engine::renderer::renderable::*;
-use crate::engine::renderer::renderer::*;
-use crate::engine::renderer::transform::*;
+use crate::engine::render::camera::*;
+use crate::engine::render::mesh::*;
+use crate::engine::render::renderable::*;
+use crate::engine::render::renderer::*;
+use crate::engine::render::transform::*;
 
 pub type Entity = usize;
 
@@ -12,7 +12,8 @@ pub struct ECS {
     pub camera: Option<Camera>,
     pub transforms: HashMap<Entity, Transform>,
     pub meshes: HashMap<Entity, Mesh>,
-    pub renderables: HashMap<Entity, RenderableMesh>
+    pub renderables: HashMap<Entity, RenderableMesh>,
+    pub lights: HashMap<Entity, Light>
 }
 
 impl ECS {
@@ -22,12 +23,17 @@ impl ECS {
             camera: Some(Camera::default()),
             transforms: HashMap::new(),
             meshes: HashMap::new(),
-            renderables: HashMap::new()
+            renderables: HashMap::new(),
+            lights: HashMap::new()
         }
     }
 
     pub fn get_camera_mut(&mut self) -> &mut Camera {
         self.camera.as_mut().expect("Камеры нет")
+    }
+
+    pub fn collect_lights(&self) -> Vec<Light> {
+        self.lights.values().cloned().collect()
     }
     
     pub fn create_entity(&mut self) -> Entity {
@@ -48,15 +54,19 @@ impl ECS {
     pub fn add_mesh(&mut self, entity: Entity, mesh: Mesh, renderer: &Renderer) {
         self.meshes.insert(entity, mesh.clone());
 
-        let renderable =
-            RenderableMesh::new(
-                &renderer.device,
-                &renderer.render_pipeline.get_bind_group_layout(0),
-                &mesh,
-                &renderer.light_buffer
-            );
+        let renderable = RenderableMesh::new(
+            &renderer.device,
+            &renderer.render_pipeline.get_bind_group_layout(0),
+            &mesh,
+            &renderer.light_buffer,
+            &renderer.light_count_buffer
+        );
 
         self.renderables.insert(entity, renderable);
+    }
+    
+    pub fn add_light(&mut self, entity: Entity, light: Light) {
+        self.lights.insert(entity, light);
     }
     
     // TODO: добавить скрипты

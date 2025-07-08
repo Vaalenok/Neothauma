@@ -1,4 +1,4 @@
-pub mod renderer;
+pub mod render;
 pub mod ecs;
 pub mod engine;
 pub mod core;
