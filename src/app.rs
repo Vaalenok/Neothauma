@@ -4,11 +4,11 @@ use winit::{
     dpi::*,
     event::*,
     event_loop::*,
-    window::*,
+    window::*
 };
 use winit::event::ElementState;
 use winit::keyboard::{KeyCode, PhysicalKey};
-use crate::engine::engine::Engine;
+use crate::engine::engine::*;
 
 pub struct App<'a> {
     engine: Option<Engine<'a>>
@@ -53,8 +53,6 @@ impl<'a> ApplicationHandler for App<'a> {
                     }
                     WindowEvent::RedrawRequested => {
                         if let Some(engine) = &mut self.engine {
-                            engine.update(1.0 / 60.0);
-
                             if let Err(e) = engine.render() {
                                 eprintln!("Ошибка отрисовки: {:?}", e);
                             }
@@ -64,26 +62,28 @@ impl<'a> ApplicationHandler for App<'a> {
                     }
                     WindowEvent::KeyboardInput { event, .. } => { // TODO: Сделать управление отдельно
                         let keycode = event.physical_key;
-                        
+    
                         if event.state == ElementState::Pressed {
+                            let camera = engine.get_camera_mut();
+                            
                             match keycode {
-                                PhysicalKey::Code(KeyCode::KeyW) => { engine.renderer.camera.move_forward(0.5); }
-                                PhysicalKey::Code(KeyCode::KeyS) => { engine.renderer.camera.move_forward(-0.5); }
-                                PhysicalKey::Code(KeyCode::KeyD) => { engine.renderer.camera.move_right(0.5); }
-                                PhysicalKey::Code(KeyCode::KeyA) => { engine.renderer.camera.move_right(-0.5); }
-                                
-                                PhysicalKey::Code(KeyCode::ArrowUp) => { engine.renderer.camera.rotate_pitch(0.2) }
-                                PhysicalKey::Code(KeyCode::ArrowDown) => { engine.renderer.camera.rotate_pitch(-0.2) }
-                                PhysicalKey::Code(KeyCode::ArrowLeft) => { engine.renderer.camera.rotate_yaw(0.2) }
-                                PhysicalKey::Code(KeyCode::ArrowRight) => { engine.renderer.camera.rotate_yaw(-0.2) }
-                                PhysicalKey::Code(KeyCode::KeyE) => { engine.renderer.camera.rotate_roll(0.2) }
-                                PhysicalKey::Code(KeyCode::KeyQ) => { engine.renderer.camera.rotate_roll(-0.2) }
-                                
-                                PhysicalKey::Code(KeyCode::Space) => { engine.renderer.camera.move_up(0.5) }
-                                PhysicalKey::Code(KeyCode::ShiftLeft) => { engine.renderer.camera.move_up(-0.5) }
-                                
-                                PhysicalKey::Code(KeyCode::Equal) => { engine.renderer.camera.fov += 1.0; }
-                                PhysicalKey::Code(KeyCode::Minus) => { engine.renderer.camera.fov -= 1.0; }
+                                PhysicalKey::Code(KeyCode::KeyW) => { camera.move_forward(0.5); }
+                                PhysicalKey::Code(KeyCode::KeyS) => { camera.move_forward(-0.5); }
+                                PhysicalKey::Code(KeyCode::KeyD) => { camera.move_right(0.5); }
+                                PhysicalKey::Code(KeyCode::KeyA) => { camera.move_right(-0.5); }
+    
+                                PhysicalKey::Code(KeyCode::ArrowUp) => { camera.rotate_pitch(0.2) }
+                                PhysicalKey::Code(KeyCode::ArrowDown) => { camera.rotate_pitch(-0.2) }
+                                PhysicalKey::Code(KeyCode::ArrowLeft) => { camera.rotate_yaw(0.2) }
+                                PhysicalKey::Code(KeyCode::ArrowRight) => { camera.rotate_yaw(-0.2) }
+                                PhysicalKey::Code(KeyCode::KeyE) => { camera.rotate_roll(0.2) }
+                                PhysicalKey::Code(KeyCode::KeyQ) => { camera.rotate_roll(-0.2) }
+    
+                                PhysicalKey::Code(KeyCode::Space) => { camera.move_up(0.5) }
+                                PhysicalKey::Code(KeyCode::ShiftLeft) => { camera.move_up(-0.5) }
+    
+                                PhysicalKey::Code(KeyCode::Equal) => { camera.fov += 1.0; }
+                                PhysicalKey::Code(KeyCode::Minus) => { camera.fov -= 1.0; }
                                 _ => {}
                             }
                         }

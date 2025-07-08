@@ -579,13 +579,14 @@ impl Mat4 {
         }
     }
 
-    pub fn to_uniform(&self) -> [[f32; 4]; 4] {
-        let mut result = [[0.0; 4]; 4];
+    pub fn to_uniform(&self) -> Self {
+        let mut result = Mat4::default();
         for i in 0..4 {
             for j in 0..4 {
-                result[j][i] = self.data[i][j];
+                result.data[j][i] = self.data[i][j];
             }
         }
+        
         result
     }
 }

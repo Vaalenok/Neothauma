@@ -11,6 +11,6 @@ pub fn load(engine: &mut Engine) {
     }
     
     if let Some(transform) = engine.ecs.transforms.get_mut(&cube2) {
-        transform.position = transform.position + Vec3::Z * 5.0;
+        transform.position = transform.position + Vec3::Z * 4.0;
     }
 }

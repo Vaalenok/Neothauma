@@ -1,18 +1,20 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use wgpu::*;
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use winit::window::Window;
-use crate::engine::renderer::camera::*;
 use crate::engine::ecs::*;
+use crate::engine::renderer::renderable::*;
 
 pub struct Renderer<'a> {
     surface: Surface<'a>,
-    pub camera: Camera,
     pub device: Device,
     pub queue: Queue,
     config: SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
     pub render_pipeline: RenderPipeline,
-    depth_view: TextureView
+    depth_view: TextureView,
+    pub light_buffer: Buffer
 }
 
 impl<'a> Renderer<'a> {
@@ -76,27 +78,54 @@ impl<'a> Renderer<'a> {
         });
 
         let vertex_layout = VertexBufferLayout {
-            array_stride: size_of::<[f32; 3]>() as u64,
+            array_stride: size_of::<[f32; 6]>() as u64,
             step_mode: VertexStepMode::Vertex,
-            attributes: &[VertexAttribute {
-                offset: 0,
-                shader_location: 0,
-                format: VertexFormat::Float32x3
-            }]
+            attributes: &[
+                VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: VertexFormat::Float32x3
+                },
+                VertexAttribute {
+                    offset: size_of::<[f32; 3]>() as u64,
+                    shader_location: 1,
+                    format: VertexFormat::Float32x3
+                }
+            ]
         };
 
         let uniform_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Uniform Bind Group Layout"),
-            entries: &[BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::VERTEX,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None
+                    },
+                    count: None
                 },
-                count: None
-            }]
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None
+                    },
+                    count: None
+                }
+            ]
+        });
+
+        let light_data = Light::default();
+
+        let light_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Light Buffer"),
+            contents: bytemuck::bytes_of(&light_data),
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST
         });
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -111,18 +140,18 @@ impl<'a> Renderer<'a> {
             vertex: VertexState {
                 module: &shader,
                 entry_point: Option::from("vs_main"),
-                compilation_options: Default::default(),
-                buffers: &[vertex_layout]
+                buffers: &[vertex_layout],
+                compilation_options: Default::default()
             },
             fragment: Some(FragmentState {
                 module: &shader,
                 entry_point: Option::from("fs_main"),
-                compilation_options: Default::default(),
                 targets: &[Some(ColorTargetState {
                     format: config.format,
                     blend: Some(BlendState::REPLACE),
                     write_mask: ColorWrites::ALL
-                })]
+                })],
+                compilation_options: Default::default()
             }),
             primitive: PrimitiveState {
                 topology: PrimitiveTopology::TriangleList,
@@ -142,13 +171,13 @@ impl<'a> Renderer<'a> {
 
         Self {
             surface,
-            camera: Camera::default(),
             device,
             queue,
             config,
             size,
             render_pipeline,
-            depth_view
+            depth_view,
+            light_buffer
         }
     }
 
@@ -161,7 +190,7 @@ impl<'a> Renderer<'a> {
         }
     }
 
-    pub fn render(&mut self, ecs: &ECS) -> Result<(), SurfaceError> {
+    pub fn render(&mut self, ecs: &mut ECS) -> Result<(), SurfaceError> {
         let frame = self.surface.get_current_texture()?;
         let view = frame.texture.create_view(&TextureViewDescriptor::default());
         let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
@@ -197,7 +226,7 @@ impl<'a> Renderer<'a> {
 
             for (entity, renderable) in &ecs.renderables {
                 if let Some(transform) = ecs.transforms.get(entity) {
-                    renderable.update_uniforms(&self.queue, transform, &self.camera, aspect_ratio);
+                    renderable.update_uniforms(&self.queue, transform, &ecs.camera, aspect_ratio);
 
                     render_pass.set_bind_group(0, &renderable.bind_group, &[]);
                     render_pass.set_vertex_buffer(0, renderable.vertex_buffer.slice(..));
@@ -214,8 +243,10 @@ impl<'a> Renderer<'a> {
 
         self.queue.submit(Some(encoder.finish()));
         frame.present();
-        
-        println!("Pos: {:?} | Rot: {:?} | FOV: {}", self.camera.position, self.camera.rotation, self.camera.fov); // TODO: Убрать
+
+        if let Some(camera) = &ecs.camera {
+            println!("Pos: {:?} | Rot: {:?} | FOV: {}", camera.position, camera.rotation, camera.fov);
+        }
 
         Ok(())
     }

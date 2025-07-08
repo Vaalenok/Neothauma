@@ -1,5 +1,6 @@
 use crate::engine::core::primitives::*;
 
+#[derive(Clone)]
 pub struct Camera {
     pub position: Vec3,
     pub rotation: Quat,
