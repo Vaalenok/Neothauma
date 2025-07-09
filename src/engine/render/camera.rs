@@ -13,7 +13,7 @@ impl Default for Camera {
     fn default() -> Self {
         Self::new(
             Vec3::new(0.0, 0.0, 3.0),
-            Quat::ZERO,
+            Quat::IDENTITY,
             90.0,
             0.1,
             100.0
@@ -51,20 +51,11 @@ impl Camera {
             [rot.data[1][0],  rot.data[1][1],  rot.data[1][2],  ty ],
             [rot.data[2][0],  rot.data[2][1],  rot.data[2][2],  tz ],
             [0.0,             0.0,             0.0,             1.0]
-        ])
+        ]).transpose()
     }
 
     pub fn get_projection_matrix(&self, aspect: f32) -> Mat4 {
-        let fov_rad = self.fov.to_radians();
-        let f = 1.0 / (fov_rad / 2.0).tan();
-        let nf = self.near - self.far;
-
-        Mat4::new([
-            [f / aspect,  0.0,  0.0,                          0.0                              ],
-            [0.0,         f,    0.0,                          0.0                              ],
-            [0.0,         0.0,  (self.far + self.near) / nf,  (2.0 * self.far * self.near) / nf],
-            [0.0,         0.0,  -1.0,                         0.0                              ]
-        ])
+        Mat4::perspective(self.fov, aspect, self.near, self.far)
     }
 
     pub fn right(&self) -> Vec3 {

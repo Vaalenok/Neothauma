@@ -316,7 +316,8 @@ pub struct Quat {
 }
 
 impl Quat {
-    pub const ZERO: Self = Self { x: 0.0, y: 0.0, z: 0.0, w: 1.0 };
+    pub const ZERO: Self = Self { x: 0.0, y: 0.0, z: 0.0, w: 0.0 };
+    pub const IDENTITY: Self = Self { x: 0.0, y: 0.0, z: 0.0, w: 1.0 };
 
     pub fn length(&self) -> f32 {
         (self.x * self.x + self.y * self.y + self.z * self.z + self.w * self.w).sqrt()
@@ -512,6 +513,16 @@ impl Mat3 {
         ]
     };
 
+    pub fn transpose(&self) -> Self {
+        let mut result = Mat3::default();
+        for i in 0..3 {
+            for j in 0..3 {
+                result.data[i][j] = self.data[j][i];
+            }
+        }
+        result
+    }
+
     pub fn mul_mat3(&self, rhs: &Mat3) -> Mat3 {
         let mut result = Mat3::default();
 
@@ -548,6 +559,12 @@ pub struct Mat4 {
     pub data: [[f32; 4]; 4]
 }
 
+impl Default for Mat4 {
+    fn default() -> Self {
+        Self::IDENTITY
+    }
+}
+
 impl Mat4 {
     pub fn new(data: [[f32; 4]; 4]) -> Self {
         Self { data }
@@ -572,7 +589,7 @@ impl Mat4 {
                 [rot.data[0][2] * transform.scale.x,  rot.data[1][2] * transform.scale.y,  rot.data[2][2] * transform.scale.z,  transform.position.z],
                 [0.0,                                 0.0,                                 0.0,                                 1.0                 ]
             ]
-        }
+        }.transpose()
     }
 
     pub fn transpose(&self) -> Self {
@@ -583,6 +600,32 @@ impl Mat4 {
             }
         }
         result
+    }
+
+    pub fn look_at(eye: Vec3, target: Vec3, up: Vec3) -> Self {
+        let f = (target - eye).normalize();
+        let s = f.cross(up).normalize();
+        let u = s.cross(f);
+
+        Mat4::new([
+            [s.x,          u.x,          -f.x,         0.0],
+            [s.y,          u.y,          -f.y,         0.0],
+            [s.z,          u.z,          -f.z,         0.0],
+            [-s.dot(eye),  -u.dot(eye),  -f.dot(eye),  1.0]
+        ]).transpose()
+    }
+
+    pub fn perspective(fov: f32, aspect: f32, near: f32, far: f32) -> Self {
+        let fov_rad = fov.to_radians();
+        let f = 1.0 / (fov_rad / 2.0).tan();
+        let nf = near - far;
+
+        Mat4::new([
+            [f / aspect,  0.0,  0.0,                0.0                    ],
+            [0.0,         f,    0.0,                0.0                    ],
+            [0.0,         0.0,  (far + near) / nf,  (2.0 * far * near) / nf],
+            [0.0,         0.0,  -1.0,               0.0                    ]
+        ]).transpose()
     }
 
     pub fn inverse(&self) -> Self {
@@ -716,12 +759,6 @@ impl Mat4 {
             }
         }
         result
-    }
-}
-
-impl Default for Mat4 {
-    fn default() -> Self {
-        Self::IDENTITY
     }
 }
 

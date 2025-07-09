@@ -30,7 +30,7 @@ impl<'a> Engine<'a> {
         }
     }
     
-    // ECS
+    /// ECS - Entity
     pub fn get_camera_mut(&mut self) -> &mut Camera {
         self.ecs.get_camera_mut()
     }
@@ -43,19 +43,26 @@ impl<'a> Engine<'a> {
         self.ecs.delete_entity(entity);
     }
 
+    /// ECS - Transform
     pub fn add_transform(&mut self, entity: Entity, transform: Transform) {
         self.ecs.add_transform(entity, transform);
     }
+    
+    pub fn transform(&mut self, entity: &Entity, transform: Transform) {
+        self.ecs.transform(entity, transform);
+    }
 
+    /// ECS - Mesh
     pub fn add_mesh(&mut self, entity: Entity, mesh: Mesh) {
         self.ecs.add_mesh(entity, mesh, &self.renderer);
     }
-    
+
+    /// ECS - Light
     pub fn add_light(&mut self, entity: Entity, light: Light) {
         self.ecs.add_light(entity, light);
     }
     
-    // Renderer
+    /// Renderer
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         self.renderer.render(&mut self.ecs)
     }
