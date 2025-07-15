@@ -73,7 +73,8 @@ impl ECS {
             &renderer.device,
             &renderer.render_pipeline.get_bind_group_layout(0),
             &renderer.shadow_pipeline.get_bind_group_layout(0),
-            &mesh, &renderer.shadow_cube_view, 
+            &mesh,
+            &renderer.shadow_cube_view, 
             &renderer.shadow_sampler,
             &renderer.light_buffer,
             &renderer.light_count_buffer
@@ -81,7 +82,7 @@ impl ECS {
 
         self.renderables.insert(entity, renderable);
     }
-
+    
     // TODO: добавить скрипты
     // pub fn add_script(&mut self, entity: Entity, script: Box<dyn Updatable>) {
     //     self.scripts.insert(entity, script);

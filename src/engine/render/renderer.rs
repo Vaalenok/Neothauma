@@ -13,6 +13,7 @@ const MAX_LIGHTS: usize = 100;
 /// Разрешение теней
 const SHADOW_RESOLUTION: usize = 1024;
 
+/// Рендерер
 pub struct Renderer<'a> {
     surface: Surface<'a>,
     pub device: Device,
@@ -246,7 +247,7 @@ impl<'a> Renderer<'a> {
 
         let shadow_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Shadow Pipeline Layout"),
-            bind_group_layouts: &[&shadow_bind_group_layout], // Используем новый макет
+            bind_group_layouts: &[&shadow_bind_group_layout],
             push_constant_ranges: &[]
         });
 
@@ -353,9 +354,10 @@ impl<'a> Renderer<'a> {
         if lights.is_empty() {
             return Ok(());
         }
-
+        
+        // TODO: сделать поддержку нескольких источников света
         let light_pos = Vec3::from(lights[0].position);
-        let light_far_plane = 1000.0;
+        let light_far_plane = 100.0;
 
         let directions = [
             (Vec3::X, -Vec3::Y),
@@ -395,9 +397,10 @@ impl<'a> Renderer<'a> {
 
             for (entity, renderable) in &ecs.renderables {
                 if let Some(transform) = ecs.transforms.get(entity) {
-                    renderable.update_uniforms_for_shadow(&self.queue, transform, light_matrices[face]);
+                    renderable.update_uniforms_for_shadow(&self.queue, transform, light_matrices[face], light_far_plane);
                     shadow_pass.set_bind_group(0, &renderable.shadow_bind_group, &[]);
                     shadow_pass.set_vertex_buffer(0, renderable.vertex_buffer.slice(..));
+                    
                     if let Some(index_buffer) = &renderable.index_buffer {
                         shadow_pass.set_index_buffer(index_buffer.slice(..), IndexFormat::Uint16);
                         shadow_pass.draw_indexed(0..renderable.index_count, 0, 0..1);
@@ -451,8 +454,8 @@ impl<'a> Renderer<'a> {
                     );
 
                     render_pass.set_bind_group(0, &renderable.main_bind_group, &[]);
-
                     render_pass.set_vertex_buffer(0, renderable.vertex_buffer.slice(..));
+                    
                     if let Some(index_buffer) = &renderable.index_buffer {
                         render_pass.set_index_buffer(index_buffer.slice(..), IndexFormat::Uint16);
                         render_pass.draw_indexed(0..renderable.index_count, 0, 0..1);

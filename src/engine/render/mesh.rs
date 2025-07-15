@@ -1,6 +1,6 @@
 use crate::engine::core::primitives::*;
 
-// Вершина
+/// Вершина
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
@@ -14,7 +14,7 @@ impl Vertex {
     }
 }
 
-// Полигональная сетка
+/// Полигональная сетка
 #[derive(Clone)]
 pub struct Mesh {
     pub vertices: Vec<Vertex>,
@@ -76,7 +76,7 @@ impl Mesh {
             Vec3::new(-0.5, -0.5, -0.5), // 4
             Vec3::new( 0.5, -0.5, -0.5), // 5
             Vec3::new( 0.5,  0.5, -0.5), // 6
-            Vec3::new(-0.5,  0.5, -0.5), // 7
+            Vec3::new(-0.5,  0.5, -0.5)  // 7
         ];
 
         let vertices = positions
@@ -96,6 +96,131 @@ impl Mesh {
         let mut mesh = Mesh::new(vertices, indices);
         mesh.generate_normals();
 
+        mesh
+    }
+
+    pub fn cone(segments: u16) -> Mesh {
+        let radius = 0.5;
+        let height = 1.0;
+
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+
+        let tip = Vec3::new(0.0, height / 2.0, 0.0);
+        vertices.push(Vertex::new(tip, Vec3::ZERO));
+
+        let base_center = Vec3::new(0.0, -height / 2.0, 0.0);
+        vertices.push(Vertex::new(base_center, Vec3::ZERO));
+
+        for i in 0..segments {
+            let theta = i as f32 / segments as f32 * std::f32::consts::TAU;
+            let x = radius * theta.cos();
+            let z = radius * theta.sin();
+            let pos = Vec3::new(x, -height / 2.0, z);
+            vertices.push(Vertex::new(pos, Vec3::ZERO));
+        }
+
+        for i in 0..segments {
+            let next = if i + 1 < segments { i + 1 } else { 0 };
+            indices.push(0);
+            indices.push(2 + next);
+            indices.push(2 + i);
+        }
+
+        for i in 0..segments {
+            let next = if i + 1 < segments { i + 1 } else { 0 };
+            indices.push(1);
+            indices.push(2 + i);
+            indices.push(2 + next);
+        }
+
+        let mut mesh = Mesh::new(vertices, indices);
+        mesh.generate_normals();
+        
+        mesh
+    }
+
+    pub fn cylinder(segments: u16) -> Mesh {
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+
+        for &y in &[-0.5, 0.5] {
+            for &r in &[1.0, 0.0] {
+                for i in 0..segments {
+                    let theta = i as f32 / segments as f32 * std::f32::consts::TAU;
+                    let x = r * theta.cos();
+                    let z = r * theta.sin();
+                    vertices.push(Vertex::new(Vec3::new(x, y, z), Vec3::ZERO));
+                }
+            }
+        }
+
+        for i in 0..segments {
+            let next = (i + 1) % segments;
+            let outer_top = i;
+            let inner_top = segments + i;
+            let outer_top_next = next;
+            let inner_top_next = segments + next;
+
+            indices.push(outer_top);
+            indices.push(inner_top_next);
+            indices.push(inner_top);
+
+            indices.push(outer_top);
+            indices.push(outer_top_next);
+            indices.push(inner_top_next);
+        }
+
+        let base = 2 * segments;
+        for i in 0..segments {
+            let next = (i + 1) % segments;
+            let outer_bottom = base + i;
+            let inner_bottom = base + segments + i;
+            let outer_bottom_next = base + next;
+            let inner_bottom_next = base + segments + next;
+
+            indices.push(outer_bottom);
+            indices.push(inner_bottom);
+            indices.push(inner_bottom_next);
+
+            indices.push(outer_bottom);
+            indices.push(inner_bottom_next);
+            indices.push(outer_bottom_next);
+        }
+
+        for i in 0..segments {
+            let next = (i + 1) % segments;
+
+            let outer_top = i;
+            let outer_bottom = base + i;
+            let outer_top_next = next;
+            let outer_bottom_next = base + next;
+
+            indices.push(outer_top);
+            indices.push(outer_bottom);
+            indices.push(outer_bottom_next);
+
+            indices.push(outer_top);
+            indices.push(outer_bottom_next);
+            indices.push(outer_top_next);
+
+            let inner_top = segments + i;
+            let inner_bottom = base + segments + i;
+            let inner_top_next = segments + next;
+            let inner_bottom_next = base + segments + next;
+
+            indices.push(inner_top);
+            indices.push(inner_bottom_next);
+            indices.push(inner_bottom);
+
+            indices.push(inner_top);
+            indices.push(inner_top_next);
+            indices.push(inner_bottom_next);
+        }
+
+        let mut mesh = Mesh::new(vertices, indices);
+        mesh.generate_normals();
+        
         mesh
     }
 }

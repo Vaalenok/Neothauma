@@ -1,11 +1,11 @@
 use std::collections::HashSet;
-use std::sync::*;
 use winit::keyboard::PhysicalKey;
+use std::sync::*;
 use winit::window::*;
 use crate::engine::ecs::*;
-use crate::engine::render::camera::Camera;
+use crate::engine::render::camera::*;
 use crate::engine::render::mesh::*;
-use crate::engine::render::renderable::Light;
+use crate::engine::render::renderable::*;
 use crate::engine::render::renderer::*;
 use crate::engine::render::transform::*;
 

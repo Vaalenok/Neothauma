@@ -11,9 +11,10 @@ pub struct Camera {
 
 impl Default for Camera {
     fn default() -> Self {
+        // TODO: исправить
         Self::new(
-            Vec3::new(0.0, 0.0, 3.0),
-            Quat::IDENTITY,
+            Vec3::new(-1.52, 3.77, 1.55),
+            Quat::new(-0.44, -0.34, -0.19, 0.81),
             90.0,
             0.1,
             100.0
@@ -47,11 +48,11 @@ impl Camera {
         let tz = rot.data[2][0] * pos.x + rot.data[2][1] * pos.y + rot.data[2][2] * pos.z;
 
         Mat4::new([
-            [rot.data[0][0],  rot.data[0][1],  rot.data[0][2],  tx ],
-            [rot.data[1][0],  rot.data[1][1],  rot.data[1][2],  ty ],
-            [rot.data[2][0],  rot.data[2][1],  rot.data[2][2],  tz ],
-            [0.0,             0.0,             0.0,             1.0]
-        ]).transpose()
+            [rot.data[0][0],  rot.data[1][0],  rot.data[2][0],  0.0],
+            [rot.data[0][1],  rot.data[1][1],  rot.data[2][1],  0.0],
+            [rot.data[0][2],  rot.data[1][2],  rot.data[2][2],  0.0],
+            [tx,              ty,              tz,              1.0]
+        ])
     }
 
     pub fn get_projection_matrix(&self, aspect: f32) -> Mat4 {

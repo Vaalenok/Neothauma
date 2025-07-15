@@ -5,6 +5,7 @@ use crate::engine::render::camera::*;
 use crate::engine::render::transform::*;
 use crate::engine::core::primitives::*;
 
+/// Униформа
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Uniforms {
@@ -29,12 +30,13 @@ impl Default for Uniforms {
             camera_pos: Vec3::ZERO,
             _padding1: 0.0,
             light_pos: Vec3::ZERO,
-            light_far_plane: 0.0,
+            light_far_plane: 100.0,
             light_view_projection: Mat4::default()
         }
     }
 }
 
+/// Освещение
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Light {
@@ -72,12 +74,14 @@ impl Light {
     }
 }
 
+/// Количество источников освещения
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct LightCount {
     pub count: u32
 }
 
+/// Рендерная сетка
 pub struct RenderableMesh {
     pub vertex_buffer: Buffer,
     pub index_buffer: Option<Buffer>,
@@ -125,7 +129,7 @@ impl RenderableMesh {
         let main_bind_group = device.create_bind_group(&BindGroupDescriptor {
             layout: bind_group_layout,
             entries: &[
-                BindGroupEntry {
+                BindGroupEntry {    
                     binding: 0,
                     resource: uniform_buffer.as_entire_binding()
                 },
@@ -139,11 +143,11 @@ impl RenderableMesh {
                 },
                 BindGroupEntry {
                     binding: 3,
-                    resource: BindingResource::TextureView(shadow_view),
+                    resource: BindingResource::TextureView(shadow_view)
                 },
                 BindGroupEntry {
                     binding: 4,
-                    resource: BindingResource::Sampler(shadow_sampler),
+                    resource: BindingResource::Sampler(shadow_sampler)
                 }
             ],
             label: Some("uniform_bind_group")
@@ -195,7 +199,13 @@ impl RenderableMesh {
         queue.write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
     }
 
-    pub fn update_uniforms_for_shadow(&self, queue: &Queue, transform: &Transform, light_view_projection: Mat4) {
+    pub fn update_uniforms_for_shadow(
+        &self,
+        queue: &Queue,
+        transform: &Transform,
+        light_view_projection: Mat4,
+        light_far_plane: f32
+    ) {
         let model = Mat4::from_transform(transform);
 
         let uniform_data = Uniforms {
@@ -206,7 +216,7 @@ impl RenderableMesh {
             camera_pos: Vec3::ZERO,
             _padding1: 0.0,
             light_pos: Vec3::ZERO,
-            light_far_plane: 0.0,
+            light_far_plane,
             light_view_projection
         };
 

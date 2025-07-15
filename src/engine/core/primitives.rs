@@ -117,7 +117,7 @@ fn clean_f32(value: f32) -> f32 {
 //     }
 // }
 
-// Трёхмерный вектор
+/// Трёхмерный вектор
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vec3 {
@@ -306,7 +306,7 @@ impl Neg for Vec3 {
 //     }
 // }
 
-// Кватернион
+/// Кватернион
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Quat {
     pub x: f32,
@@ -318,6 +318,10 @@ pub struct Quat {
 impl Quat {
     pub const ZERO: Self = Self { x: 0.0, y: 0.0, z: 0.0, w: 0.0 };
     pub const IDENTITY: Self = Self { x: 0.0, y: 0.0, z: 0.0, w: 1.0 };
+
+    pub fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
+        Self { x, y, z, w }
+    }
 
     pub fn length(&self) -> f32 {
         (self.x * self.x + self.y * self.y + self.z * self.z + self.w * self.w).sqrt()
@@ -494,7 +498,7 @@ impl Mul<Vec3> for Quat {
     }
 }
 
-// Трёхмерная матрица
+/// Трёхмерная матрица
 #[derive(Copy, Clone, Debug)]
 pub struct Mat3 {
     pub data: [[f32; 3]; 3]
@@ -515,15 +519,26 @@ impl Mat3 {
 
     pub fn transpose(&self) -> Self {
         let mut result = Mat3::default();
+        
         for i in 0..3 {
             for j in 0..3 {
                 result.data[i][j] = self.data[j][i];
             }
         }
+        
         result
     }
+}
 
-    pub fn mul_mat3(&self, rhs: &Mat3) -> Mat3 {
+impl Default for Mat3 {
+    fn default() -> Self {
+        Self::IDENTITY
+    }
+}
+
+impl Mul for Mat3 {
+    type Output = Mat3;
+    fn mul(self, rhs: Self) -> Self::Output {
         let mut result = Mat3::default();
 
         for i in 0..3 {
@@ -539,20 +554,7 @@ impl Mat3 {
     }
 }
 
-impl Default for Mat3 {
-    fn default() -> Self {
-        Self::IDENTITY
-    }
-}
-
-impl Mul for Mat3 {
-    type Output = Mat3;
-    fn mul(self, rhs: Self) -> Self::Output {
-        self.mul_mat3(&rhs)
-    }
-}
-
-// Четырёхмерная матрица
+/// Четырёхмерная матрица
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Mat4 {
@@ -584,12 +586,12 @@ impl Mat4 {
 
         Self {
             data: [
-                [rot.data[0][0] * transform.scale.x,  rot.data[1][0] * transform.scale.y,  rot.data[2][0] * transform.scale.z,  transform.position.x],
-                [rot.data[0][1] * transform.scale.x,  rot.data[1][1] * transform.scale.y,  rot.data[2][1] * transform.scale.z,  transform.position.y],
-                [rot.data[0][2] * transform.scale.x,  rot.data[1][2] * transform.scale.y,  rot.data[2][2] * transform.scale.z,  transform.position.z],
-                [0.0,                                 0.0,                                 0.0,                                 1.0                 ]
+                [rot.data[0][0] * transform.scale.x,  rot.data[0][1] * transform.scale.x,  rot.data[0][2] * transform.scale.x,  0.0],
+                [rot.data[1][0] * transform.scale.y,  rot.data[1][1] * transform.scale.y,  rot.data[1][2] * transform.scale.y,  0.0],
+                [rot.data[2][0] * transform.scale.z,  rot.data[2][1] * transform.scale.z,  rot.data[2][2] * transform.scale.z,  0.0],
+                [transform.position.x,                transform.position.y,                transform.position.z,                1.0]
             ]
-        }.transpose()
+        }
     }
 
     pub fn transpose(&self) -> Self {
@@ -599,6 +601,7 @@ impl Mat4 {
                 result.data[i][j] = self.data[j][i];
             }
         }
+
         result
     }
 
@@ -608,11 +611,11 @@ impl Mat4 {
         let u = s.cross(f);
 
         Mat4::new([
-            [s.x,          u.x,          -f.x,         0.0],
-            [s.y,          u.y,          -f.y,         0.0],
-            [s.z,          u.z,          -f.z,         0.0],
-            [-s.dot(eye),  -u.dot(eye),  -f.dot(eye),  1.0]
-        ]).transpose()
+            [s.x,   s.y,   s.z,   -s.dot(eye)],
+            [u.x,   u.y,   u.z,   -u.dot(eye)],
+            [-f.x,  -f.y,  -f.z,  -f.dot(eye)],
+            [0.0,   0.0,   0.0,   1.0        ]
+        ])
     }
 
     pub fn perspective(fov: f32, aspect: f32, near: f32, far: f32) -> Self {
@@ -621,11 +624,11 @@ impl Mat4 {
         let nf = near - far;
 
         Mat4::new([
-            [f / aspect,  0.0,  0.0,                0.0                    ],
-            [0.0,         f,    0.0,                0.0                    ],
-            [0.0,         0.0,  (far + near) / nf,  (2.0 * far * near) / nf],
-            [0.0,         0.0,  -1.0,               0.0                    ]
-        ]).transpose()
+            [f / aspect,  0.0,  0.0,                      0.0 ],
+            [0.0,         f,    0.0,                      0.0 ],
+            [0.0,         0.0,  (far + near) / nf,        -1.0],
+            [0.0,         0.0,  (2.0 * far * near) / nf,  0.0 ]
+        ])
     }
 
     pub fn inverse(&self) -> Self {
@@ -758,6 +761,7 @@ impl Mat4 {
                 result.data[i][j] = inv[i][j] * det;
             }
         }
+        
         result
     }
 }

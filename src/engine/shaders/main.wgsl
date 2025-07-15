@@ -77,13 +77,11 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
         let attenuation = 1.0 / (dist_to_light * dist_to_light + 0.001);
         let diffuse = light.color * diffuse_strength * light.intensity * attenuation;
 
-        // Shadow mapping
         let frag_to_light = input.world_pos - uniforms.light_pos;
         let current_depth = length(frag_to_light);
         let direction = normalize(frag_to_light);
 
-        // Smoother bias based on normal/light angle
-        let bias = max(0.05 * (1.0 - dot(input.normal, -light_dir)), 0.005);
+        let bias = max(0.05 * (1.0 - dot(input.normal, -light_dir)), 0.01);
 
         let shadow = textureSampleCompare(
             depth_texture,

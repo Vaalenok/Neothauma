@@ -1,5 +1,6 @@
 use crate::engine::core::primitives::*;
 
+/// Позиционирование
 #[derive(Clone)]
 pub struct Transform {
     pub position: Vec3,
