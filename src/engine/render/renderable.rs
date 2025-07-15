@@ -8,13 +8,15 @@ use crate::engine::core::primitives::*;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Uniforms {
-    model: Mat4,
-    view: Mat4,
-    projection: Mat4,
-    normal: Mat4,
-    camera_pos: Vec3,
-    shadow_mat: Mat4,
-    _pad: u32
+    pub model: Mat4,
+    pub view: Mat4,
+    pub projection: Mat4,
+    pub normal: Mat4,
+    pub camera_pos: Vec3,
+    pub _padding1: f32,
+    pub light_pos: Vec3,
+    pub light_far_plane: f32,
+    pub light_view_projection: Mat4
 }
 
 impl Default for Uniforms {
@@ -25,10 +27,55 @@ impl Default for Uniforms {
             projection: Mat4::default(),
             normal: Mat4::default(),
             camera_pos: Vec3::ZERO,
-            shadow_mat: Mat4::default(),
-            _pad: 0
+            _padding1: 0.0,
+            light_pos: Vec3::ZERO,
+            light_far_plane: 0.0,
+            light_view_projection: Mat4::default()
         }
     }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct Light {
+    pub position: Vec3,
+    pub light_type: u32,
+    pub color: Vec3,
+    pub intensity: f32,
+    pub range: f32,
+    pub _pad: [f32; 6]
+}
+
+impl Default for Light {
+    fn default() -> Self {
+        Self {
+            position: Vec3::ZERO,
+            light_type: 0,
+            color: Vec3::IDENTITY,
+            intensity: 10.0,
+            range: 10.0,
+            _pad: [0.0; 6]
+        }
+    }
+}
+
+impl Light {
+    pub fn new(light_type: u32, color: Vec3, intensity: f32, range: f32) -> Self {
+        Self {
+            position: Vec3::ZERO,
+            light_type,
+            color,
+            intensity,
+            range,
+            _pad: [0.0; 6]
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct LightCount {
+    pub count: u32
 }
 
 pub struct RenderableMesh {
@@ -127,76 +174,42 @@ impl RenderableMesh {
         &self,
         queue: &Queue,
         transform: &Transform,
-        camera: &Option<Camera>,
+        camera: &Camera,
         aspect_ratio: f32,
-        shadow_mat: Mat4
+        light_pos: Vec3,
+        light_far_plane: f32,
+        light_view_projection: Mat4
     ) {
-        let camera = camera.clone().unwrap();
-
-        let model = Mat4::from_transform(transform);
-        let view = camera.get_view_matrix();
-        let projection = camera.get_projection_matrix(aspect_ratio);
-
-        let normal = model.inverse();
-
-        let camera_pos = camera.position;
-
-        let uniform_data = Uniforms {
-            model,
-            view,
-            projection,
-            normal,
-            camera_pos,
-            shadow_mat,
-            ..Default::default()
+        let uniforms = Uniforms {
+            model: Mat4::from_transform(transform),
+            view: camera.get_view_matrix(),
+            projection: camera.get_projection_matrix(aspect_ratio),
+            normal: Mat4::from_transform(transform).inverse().transpose(),
+            camera_pos: camera.position,
+            _padding1: 0.0,
+            light_pos,
+            light_far_plane,
+            light_view_projection
         };
 
-        queue.write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(&uniform_data));
+        queue.write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
     }
 
-    pub fn update_uniforms_for_shadow(&self, queue: &Queue, transform: &Transform, light_view_proj_mat: Mat4) {
+    pub fn update_uniforms_for_shadow(&self, queue: &Queue, transform: &Transform, light_view_projection: Mat4) {
         let model = Mat4::from_transform(transform);
 
         let uniform_data = Uniforms {
             model,
             view: Mat4::IDENTITY,
             projection: Mat4::IDENTITY,
-            normal: model.inverse(),
+            normal: Mat4::IDENTITY,
             camera_pos: Vec3::ZERO,
-            shadow_mat: light_view_proj_mat,
-            _pad: 0
+            _padding1: 0.0,
+            light_pos: Vec3::ZERO,
+            light_far_plane: 0.0,
+            light_view_projection
         };
 
         queue.write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(&uniform_data));
     }
-}
-
-#[repr(C)]
-#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Light {
-    pub position: Vec3,
-    pub _pad1: f32,
-    pub color: Vec3,
-    pub _pad2: f32,
-    pub intensity: f32,
-    pub _pad3: [f32; 7]
-}
-
-impl Light {
-    pub fn default() -> Self {
-        Self {
-            position: Vec3::ZERO,
-            color: Vec3::IDENTITY,
-            intensity: 1.0,
-            _pad1: 0.0,
-            _pad2: 0.0,
-            _pad3: [0.0; 7]
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct LightCount {
-    pub count: u32
 }

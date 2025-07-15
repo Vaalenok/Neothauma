@@ -304,7 +304,7 @@ impl<'a> Renderer<'a> {
                 stencil: Default::default(),
                 bias: DepthBiasState {
                     constant: 2,
-                    slope_scale: 1.0,
+                    slope_scale: 2.0,
                     clamp: 0.0
                 }
             }),
@@ -355,6 +355,7 @@ impl<'a> Renderer<'a> {
         }
 
         let light_pos = Vec3::from(lights[0].position);
+        let light_far_plane = 1000.0;
 
         let directions = [
             (Vec3::X, -Vec3::Y),
@@ -442,8 +443,10 @@ impl<'a> Renderer<'a> {
                     renderable.update_uniforms(
                         &self.queue,
                         transform,
-                        &ecs.camera,
+                        &ecs.camera.clone().unwrap(),
                         aspect_ratio,
+                        light_pos,
+                        light_far_plane,
                         light_matrices[0]
                     );
 

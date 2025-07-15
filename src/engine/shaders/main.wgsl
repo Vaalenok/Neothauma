@@ -10,16 +10,19 @@ struct Uniforms {
     projection: mat4x4<f32>,
     normal: mat4x4<f32>,
     camera_pos: vec3<f32>,
-    shadow_mat: mat4x4<f32>
+    _padding1: f32,
+    light_pos: vec3<f32>,
+    light_far_plane: f32,
+    light_view_projection: mat4x4<f32>
 };
 
 struct Light {
     position: vec3<f32>,
-    _pad1: f32,
+    light_type: u32,
     color: vec3<f32>,
-    _pad2: f32,
     intensity: f32,
-    _pad3: array<f32, 7>
+    range: f32,
+    _pad: array<f32, 6>
 };
 
 struct LightCount {
@@ -35,54 +38,62 @@ struct VertexOutput {
     @builtin(position) clip_pos: vec4<f32>,
     @location(0) world_pos: vec3<f32>,
     @location(1) normal: vec3<f32>,
-    @location(2) frag_coord: vec2<f32>,
-    @location(3) shadow_uv: vec4<f32>
+    @location(2) light_to_frag_vec: vec3<f32>
 };
 
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
     var out: VertexOutput;
+
     let model_pos = uniforms.model * vec4(input.position, 1.0);
-    let normal = (uniforms.normal * vec4(input.normal, 0.0)).xyz;
-    let shadow_pos = uniforms.shadow_mat * model_pos;
+    out.world_pos = model_pos.xyz;
+    out.normal = normalize((uniforms.normal * vec4(input.normal, 0.0)).xyz);
 
     out.clip_pos = uniforms.projection * uniforms.view * model_pos;
-    out.world_pos = model_pos.xyz;
-    out.normal = normalize(normal);
-    out.frag_coord = out.clip_pos.xy / out.clip_pos.w;
-    out.shadow_uv = shadow_pos;
+    out.light_to_frag_vec = out.world_pos - uniforms.light_pos;
 
     return out;
 }
 
-fn pseudo_noise(coord: vec2<f32>) -> f32 {
-    let p = fract(sin(dot(coord, vec2<f32>(12.9898,78.233))) * 43758.5453);
-    return p;
-}
-
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
-    var lit = 0.0;
-    let ambient = 0.15;
+    let ambient = vec3(0.1);
 
-    for (var i = 0u; i < light_count.count; i = i + 1u) {
+    var lighting = ambient;
+
+    for (var i: u32 = 0u; i < light_count.count; i++) {
         let light = lights[i];
+        if (light.light_type != 0u) {
+            continue;
+        }
+
         let light_dir = normalize(light.position - input.world_pos);
-        lit += max(dot(input.normal, light_dir), 0.0) * light.intensity;
+        let dist_to_light = length(light.position - input.world_pos);
+        if (dist_to_light > light.range) {
+            continue;
+        }
+
+        let diffuse_strength = max(dot(input.normal, light_dir), 0.0);
+        let attenuation = 1.0 / (dist_to_light * dist_to_light + 0.001);
+        let diffuse = light.color * diffuse_strength * light.intensity * attenuation;
+
+        // Shadow mapping
+        let frag_to_light = input.world_pos - uniforms.light_pos;
+        let current_depth = length(frag_to_light);
+        let direction = normalize(frag_to_light);
+
+        // Smoother bias based on normal/light angle
+        let bias = max(0.05 * (1.0 - dot(input.normal, -light_dir)), 0.005);
+
+        let shadow = textureSampleCompare(
+            depth_texture,
+            depth_sampler,
+            direction,
+            (current_depth - bias) / uniforms.light_far_plane
+        );
+
+        lighting += diffuse * shadow;
     }
 
-    lit = clamp(lit, 0.0, 1.0);
-
-    let light_pos = lights[0].position;
-    let light_to_frag = input.world_pos - light_pos;
-    let dist = length(light_to_frag);
-
-    let shadow = textureSampleCompare(depth_texture, depth_sampler, light_to_frag, dist - 0.0005);
-
-    let brightness = ambient + shadow * lit;
-    let quantized = floor(brightness * 5.0) / 5.0;
-    let noise = pseudo_noise(input.frag_coord * 300.0);
-    let _final = quantized > noise;
-
-    return vec4(vec3(f32(_final)), 1.0);
+    return vec4(lighting, 1.0);
 }

@@ -9,16 +9,9 @@ struct VertexInput {
     @location(0) position: vec3<f32>
 };
 
-struct VertexOutput {
-    @builtin(position) position: vec4<f32>
-};
-
 @vertex
-fn vs_main(input: VertexInput) -> VertexOutput {
-    var out: VertexOutput;
-    out.position = uniforms.light_view_proj * uniforms.model * vec4(input.position, 1.0);
-    return out;
+fn vs_main(input: VertexInput) -> @builtin(position) vec4<f32> {
+    let world_pos = uniforms.model * vec4(input.position, 1.0);
+    let light_clip_pos = uniforms.light_view_proj * world_pos;
+    return light_clip_pos;
 }
-
-@fragment
-fn fs_main() {}
