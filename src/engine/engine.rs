@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use winit::keyboard::PhysicalKey;
 use std::sync::*;
 use winit::window::*;
+use crate::engine::core::primitives::Vec3;
 use crate::engine::ecs::*;
 use crate::engine::render::camera::*;
 use crate::engine::render::mesh::*;
@@ -60,6 +61,10 @@ impl<'a> Engine<'a> {
     /// ECS - Light
     pub fn add_light(&mut self, entity: Entity, light: Light) {
         self.ecs.add_light(entity, light);
+    }
+    
+    pub fn edit_light(&mut self, entity: &Entity, color: Vec3, intensity: f32, range: f32) {
+        self.ecs.edit_light(entity, color, intensity, range);
     }
     
     /// Renderer

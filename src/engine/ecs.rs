@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use crate::engine::core::primitives::*;
 use crate::engine::render::camera::*;
 use crate::engine::render::mesh::*;
 use crate::engine::render::renderable::*;
@@ -40,6 +41,14 @@ impl ECS {
 
     pub fn add_light(&mut self, entity: Entity, light: Light) {
         self.lights.insert(entity, light);
+    }
+    
+    pub fn edit_light(&mut self, entity: &Entity, color: Vec3, intensity: f32, range: f32) {
+        if let Some(obj_light) = self.lights.get_mut(&entity) {
+            obj_light.color = color;
+            obj_light.intensity = intensity;
+            obj_light.range = range;
+        }
     }
 
     /// Entity

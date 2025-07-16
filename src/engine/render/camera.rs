@@ -11,10 +11,9 @@ pub struct Camera {
 
 impl Default for Camera {
     fn default() -> Self {
-        // TODO: исправить
         Self::new(
-            Vec3::new(-1.52, 3.77, 1.55),
-            Quat::new(-0.44, -0.34, -0.19, 0.81),
+            Vec3::ZERO,
+            Quat::IDENTITY,
             90.0,
             0.1,
             100.0

@@ -54,8 +54,8 @@ impl Default for Light {
             position: Vec3::ZERO,
             light_type: 0,
             color: Vec3::IDENTITY,
-            intensity: 10.0,
-            range: 10.0,
+            intensity: 1.0,
+            range: 100.0,
             _pad: [0.0; 6]
         }
     }

@@ -223,4 +223,50 @@ impl Mesh {
         
         mesh
     }
+
+    pub fn sphere(segments: u16) -> Mesh {
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+
+        for y in 0..=segments {
+            let v = y as f32 / segments as f32;
+            let theta = v * std::f32::consts::PI;
+
+            for x in 0..=segments {
+                let u = x as f32 / segments as f32;
+                let phi = u * std::f32::consts::TAU;
+
+                let sin_theta = theta.sin();
+                let cos_theta = theta.cos();
+                let sin_phi = phi.sin();
+                let cos_phi = phi.cos();
+
+                let pos = Vec3 {
+                    x: sin_theta * cos_phi,
+                    y: cos_theta,
+                    z: sin_theta * sin_phi,
+                };
+
+                let normal = pos.normalize();
+                
+                vertices.push(Vertex::new(pos, normal));
+            }
+        }
+
+        let ring = segments + 1;
+        for y in 0..segments {
+            for x in 0..segments {
+                let i = y * ring + x;
+                indices.push(i);
+                indices.push(i + 1);
+                indices.push(i + ring);
+
+                indices.push(i + 1);
+                indices.push(i + ring + 1);
+                indices.push(i + ring);
+            }
+        }
+
+        Mesh { vertices, indices }
+    }
 }

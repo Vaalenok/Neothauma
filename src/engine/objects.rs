@@ -43,6 +43,19 @@ pub fn cylinder(engine: &mut Engine, segments: u16) -> Entity {
     entity
 }
 
+/// Шар
+pub fn sphere(engine: &mut Engine, segments: u16) -> Entity {
+    let entity = engine.create_entity();
+    
+    let transform = Transform::default();
+    engine.add_transform(entity, transform);
+    
+    let mesh = Mesh::sphere(segments);
+    engine.add_mesh(entity, mesh);
+    
+    entity
+}
+
 /// Освещение
 pub fn light(engine: &mut Engine) -> Entity {
     let entity = engine.create_entity();
